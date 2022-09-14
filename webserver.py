@@ -1,15 +1,16 @@
 import socket
+from datetime import datetime
 
-class TCPServer:
+class WebServer:
     """
-    A simple  server.
+    A simple Web server.
     """
     def __init__(self):
         pass
 
     def serve(self):
         """
-        Serve the TCP server.
+        Serve the Web server.
         """
         print("Start Server")
         # Create a TCP/IP socket
@@ -27,9 +28,18 @@ class TCPServer:
             with open("data/server_recv.txt", "wb") as f:
                 f.write(request)
 
-            with open("data/server_send.txt", "rb") as f:
-                response = f.read()
+            response_body = "<html><body><h1>It works!</h1></body></html>"
+
+            response_line = "HTTP/1.1 200 OK\r\n"
+
+            response_header = f"Date:{datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
+            response_header += "Host: Seigo2016 Web Server/0.1\r\n"
+            response_header += f"Content-Length: {len(response_body.encode())}\r\n"
+            response_header += "Connection: Close\r\n"
+            response_header += "Content-Type: text/html; charset=utf-8\r\n"
             
+            response = (response_line + response_header + "\r\n" + response_body).encode()
+
             client_socket.send(response)
 
             client_socket.close()
@@ -39,5 +49,5 @@ class TCPServer:
             print("Server is closed")
 
 if __name__ == "__main__":
-    server = TCPServer()
+    server = WebServer()
     server.serve()
