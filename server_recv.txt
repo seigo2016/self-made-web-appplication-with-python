@@ -1,0 +1,13 @@
+GET /image/icon.png HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0
+Accept: image/avif,image/webp,*/*
+Accept-Language: ja,en-US;q=0.7,en;q=0.3
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Referer: http://localhost:8080/index.html
+Cookie: remember_token=1|71aa2dbb7d2dbf1c12e04a69a95cd3f392ebe2bf2786ef724938a04aa626ccd770d869bf4bbd67784ab232a75f136713caa3b3e76be0d6d3832c109ccbd4c1fb; remember_web_59ba36addc2b2f9401580f014c7f58ea4e30989d=eyJpdiI6IkpYNktXNWRpZmxOdUp5VDFhUmErL3c9PSIsInZhbHVlIjoiaTE1czNaSXRNTUJlczEzMXpmTmRMeWQ3OGpKb0IxS0p0TU43VXU3REVaaFV6RWpTeHVjVm5lVFRSMTJodldpOHc1ZTEyTkwwZTVqQTNmZ0hmY1ZHNFZGdEphdDhNSzVVR2g0LzZSZzJEYURLZ2kyS2lFUzlGenlLbjkvSDl4S21IWXpFNis5TWlOSnNjMzBkUGZtbFN2aVlnSi9pYzdoVEZYZEp5K1d4TjNvPSIsIm1hYyI6IjQ5ZGFhNDY4ZThjN2Y3NTRmNGRkNTM5YjliZTUyNzYwMGEyMjYwMTQ2ZWY5NWQ2NzEyZjM3NjBhYzYzOTI2YjYifQ%3D%3D; wp-settings-time-1=1660200513
+Sec-Fetch-Dest: image
+Sec-Fetch-Mode: no-cors
+Sec-Fetch-Site: same-origin
+
