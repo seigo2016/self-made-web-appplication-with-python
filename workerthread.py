@@ -7,6 +7,7 @@ from typing import Tuple
 import textwrap
 from pprint import pformat
 import re
+import urllib.parse
 
 class WorkerThread(Thread):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -38,6 +39,7 @@ class WorkerThread(Thread):
 
         request_dict = self.parse_request(request)
         path = request_dict["path"]
+        content_type=""
         if path == "/now":
             response_body, response_line, content_type = self.get_now()
             response_header = self.gen_response_header(path, response_body, content_type)
@@ -45,7 +47,24 @@ class WorkerThread(Thread):
         elif path == "/show_request":
             response_body, response_line, content_type = self.get_show_request(request_dict)
             response_header = self.gen_response_header(path, response_body, content_type)
-
+        elif path == "/parameters":
+            if request_dict["method"] == "GET":
+                response_body = b"<html><body><h1>405 Method Not Allowed</h1></body></html>"
+                content_type = "text/html; charset=UTF-8"
+                response_line = "HTTP/1.1 405 Method Not Allowed\r\n"
+            elif request_dict["method"] == "POST":
+                post_params = urllib.parse.parse_qs(request_dict["request_body"].decode())
+                html = f"""\
+                        <html>
+                        <body>
+                            <h1>Parameters:</h1>
+                            <pre>{pformat(post_params)}</pre>                        
+                        </body>
+                        </html>
+                        """
+                response_body = textwrap.dedent(html).encode()
+                content_type = "text/html; charset=UTF-8"
+                response_line = "HTTP/1.1 200 OK\r\n"
         else:
             try:
                 response_body = self.get_static_file(path)
@@ -53,8 +72,7 @@ class WorkerThread(Thread):
             except OSError:
                 response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
                 response_line = "HTTP/1.1 404 Not Found\r\n"
-                response_header = self.gen_response_header(path, response_body)
-            
+        response_header = self.gen_response_header(path, response_body, content_type)
         response = (response_line + response_header + "\r\n").encode() + response_body
         self.client_socket.send(response)
 
