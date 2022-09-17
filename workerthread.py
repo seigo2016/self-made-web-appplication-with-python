@@ -1,13 +1,13 @@
 import os
-import traceback
 from datetime import datetime
 from socket import socket
 from threading import Thread
 from typing import Tuple
-import textwrap
-from pprint import pformat
 import re
-import urllib.parse
+from urls import URL_VIEW
+from views import *
+from http_data.response import HTTPResponse
+from http_data.request import HTTPRequest
 
 class WorkerThread(Thread):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,6 +19,12 @@ class WorkerThread(Thread):
         "jpg": "image/jpg",
         "gif": "image/gif",
     }
+    STATUS_LINES = {
+        200: "200 OK",
+        404: "404 Not Found",
+        405: "405 Method Not Allowed",
+    }
+    URL_VIEW = URL_VIEW
 
     def __init__(self, client_socket: socket, address: Tuple[str, int]):
         super().__init__()
@@ -33,47 +39,27 @@ class WorkerThread(Thread):
         """
         Handle client.
         """
-        request = self.client_socket.recv(4096)
+        request_bytes = self.client_socket.recv(4096)
         with open("data/server_recv.txt", "wb") as f:
-            f.write(request)
+            f.write(request_bytes)
 
-        request_dict = self.parse_request(request)
-        path = request_dict["path"]
+        request = self.parse_request(request_bytes)
         content_type=""
-        if path == "/now":
-            response_body, response_line, content_type = self.get_now()
-            response_header = self.gen_response_header(path, response_body, content_type)
-
-        elif path == "/show_request":
-            response_body, response_line, content_type = self.get_show_request(request_dict)
-            response_header = self.gen_response_header(path, response_body, content_type)
-        elif path == "/parameters":
-            if request_dict["method"] == "GET":
-                response_body = b"<html><body><h1>405 Method Not Allowed</h1></body></html>"
-                content_type = "text/html; charset=UTF-8"
-                response_line = "HTTP/1.1 405 Method Not Allowed\r\n"
-            elif request_dict["method"] == "POST":
-                post_params = urllib.parse.parse_qs(request_dict["request_body"].decode())
-                html = f"""\
-                        <html>
-                        <body>
-                            <h1>Parameters:</h1>
-                            <pre>{pformat(post_params)}</pre>                        
-                        </body>
-                        </html>
-                        """
-                response_body = textwrap.dedent(html).encode()
-                content_type = "text/html; charset=UTF-8"
-                response_line = "HTTP/1.1 200 OK\r\n"
+        if request.path in self.URL_VIEW:
+            view = self.URL_VIEW[request.path]
+            response = view(request)
         else:
             try:
-                response_body = self.get_static_file(path)
-                response_line = "HTTP/1.1 200 OK\r\n"
+                response_body = self.get_static_file(request.path)
+                content_type = None
+                response = HTTPResponse(body=response_body, content_type=content_type, status_code=200)
             except OSError:
                 response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
-                response_line = "HTTP/1.1 404 Not Found\r\n"
-        response_header = self.gen_response_header(path, response_body, content_type)
-        response = (response_line + response_header + "\r\n").encode() + response_body
+                content_type="text/html; charset=UTF-8"
+                response = HTTPResponse(body=response_body, content_type=content_type, status_code=404)
+        response_header = self.gen_response_header(response, request)
+        response_line = f"HTTP/1.1 {self.STATUS_LINES[response.status_code]}"
+        response = (response_line + response_header + "\r\n").encode() + response.body
         self.client_socket.send(response)
 
     def get_static_file(self, path:str) -> bytes:
@@ -86,7 +72,7 @@ class WorkerThread(Thread):
         with open(static_file_path, "rb") as f:
             return f.read()
 
-    def parse_request(self, request:bytes) -> dict:
+    def parse_request(self, request:bytes) -> HTTPRequest:
         """
         Parse request.
         """
@@ -98,74 +84,27 @@ class WorkerThread(Thread):
             headers[key] = value
         method, path, http_version = request_line.decode().split(" ")
 
-        return {
-            "method": method,
-            "path": path,
-            "http_version": http_version,
-            "request_header": headers,
-            "request_body": request_body,
-        }
+        return HTTPRequest(method=method, 
+                           path=path, 
+                           http_version=http_version, 
+                           headers=headers, 
+                           body=request_body
+                           )
 
-    def gen_response_header(self, path:str, response_body:bytes, content_type:str=None) -> str:
+    def gen_response_header(self, response: HTTPResponse, request: HTTPRequest) -> str:
         """
         Generate response header.
         """
-        if content_type is None:
-            if "." in path:
-                ext = path.rsplit(".", maxsplit=1)[-1]
+        if response.content_type is None:
+            if "." in request.path:
+                ext = request.path.rsplit(".", maxsplit=1)[-1]
             else:
                 ext = ""
-            content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
+            response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
 
         response_header = f"Date:{datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
-        response_header += "Host: Seigo2016 Web Server/0.5\r\n"
-        response_header += f"Content-Length: {len(response_body)}\r\n"
+        response_header += "Host: Seigo2016 Web Server/0.6\r\n"
+        response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
-        response_header += f"Content-Type: {content_type}; charset=utf-8\r\n"
+        response_header += f"Content-Type: {response.content_type}; charset=utf-8\r\n"
         return response_header
-
-
-    def get_now(self):
-        html = f"""\
-                    <html>
-                    <body>
-                        <h1>Now: {datetime.now()}</h1>
-                    </body>
-                    </html>
-                """
-        response_body = textwrap.dedent(html).encode()
-        content_type = "text/html"
-        response_line = "HTTP/1.1 200 OK\r\n"
-
-        return response_body, response_line, content_type
-
-    def get_show_request(self, request_dict:bytes):
-        method = request_dict["method"]
-        path = request_dict["path"]
-        http_version = request_dict["http_version"]
-        request_header = request_dict["request_header"]
-        request_body = request_dict["request_body"]
-
-        html = f"""\
-                    <html>
-                    <body>
-                        <h1>Request Line:</h1>
-                        <p>
-                            {method} {path} {http_version}
-                        </p>
-                        <h1>Headers:</h1>
-                        <pre>{pformat(request_header)}</pre>
-                        <h1>Body:</h1>
-                        <pre>{request_body.decode("utf-8", "ignore")}</pre>
-                        
-                    </body>
-                    </html>
-                """
-        response_body = textwrap.dedent(html).encode()
-
-        # Content-Typeを指定
-        content_type = "text/html"
-
-        # レスポンスラインを生成
-        response_line = "HTTP/1.1 200 OK\r\n"
-        return response_body, response_line, content_type
