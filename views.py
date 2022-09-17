@@ -4,8 +4,8 @@ import urllib.parse
 from datetime import datetime
 from pprint import pformat
 from typing import Tuple, Optional
-from http_data.request import HTTPRequest
-from http_data.response import HTTPResponse
+from sei_go.http_data.request import HTTPRequest
+from sei_go.http_data.response import HTTPResponse
 
 def now() -> Tuple[bytes, Optional[str], str]:
     """Geneate a simple HTML page with the current time."""

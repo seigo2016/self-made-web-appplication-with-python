@@ -6,12 +6,11 @@ from typing import Tuple
 import re
 from urls import URL_VIEW
 from views import *
-from http_data.response import HTTPResponse
-from http_data.request import HTTPRequest
+from sei_go.http_data.response import HTTPResponse
+from sei_go.http_data.request import HTTPRequest
+import settings
 
-class WorkerThread(Thread):
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    STATIC_ROOT = os.path.join(BASE_DIR, "static")
+class Worker(Thread):
     MIME_TYPES = {
         "html": "text/html",
         "css": "text/css",
@@ -66,9 +65,11 @@ class WorkerThread(Thread):
         """
         Get static file.
         """
+        default_static_root =  os.path.join(os.path.dirname(__file__), "../../static")
+        static_root = getattr(settings, "STATIC_ROOT", default_static_root)
 
-        relative_path = path[1:]
-        static_file_path = os.path.join(self.STATIC_ROOT, relative_path)
+        relative_path = path.lstrip("/")
+        static_file_path = os.path.join(static_root, relative_path)
         with open(static_file_path, "rb") as f:
             return f.read()
 
@@ -103,7 +104,7 @@ class WorkerThread(Thread):
             response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
 
         response_header = f"Date:{datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
-        response_header += "Host: Seigo2016 Web Server/0.6\r\n"
+        response_header += "Host: Seigo2016 Web Server/0.7\r\n"
         response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {response.content_type}; charset=utf-8\r\n"

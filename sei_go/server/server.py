@@ -1,26 +1,10 @@
-from importlib.resources import path
-import os
 import socket
-from datetime import datetime
-import os
-import traceback
-from workerthread import WorkerThread
+from sei_go.server.worker import Worker
 
-class WebServer:
+class Server:
     """
     A simple Web server.
     """
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    STATIC_ROOT = os.path.join(BASE_DIR, "static")
-    MIME_TYPES = {
-        "html": "text/html",
-        "css": "text/css",
-        "png": "image/png",
-        "jpg": "image/jpg",
-        "gif": "image/gif",
-    }
-    def __init__(self):
-        pass
 
     def serve(self):
         """
@@ -34,7 +18,7 @@ class WebServer:
             while True:
                 (client_socket, address) = server_socket.accept()
                 print("Client connected from: ", address)
-                thread = WorkerThread(client_socket, address)
+                thread = Worker(client_socket, address)
                 thread.start()
         finally:
             server_socket.close()
@@ -46,7 +30,3 @@ class WebServer:
         server_socket.bind(('', 8080))
         server_socket.listen(10)
         return server_socket
-
-if __name__ == "__main__":
-    server = WebServer()
-    server.serve()
