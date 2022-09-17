@@ -1,14 +1,15 @@
 import os
+import re
 from datetime import datetime
 from socket import socket
 from threading import Thread
+import traceback
 from typing import Tuple
-import re
-from urls import URL_VIEW
-from views import *
+
+import settings
 from sei_go.http_data.response import HTTPResponse
 from sei_go.http_data.request import HTTPRequest
-import settings
+from sei_go.urls.resolver import URLResolver
 
 class Worker(Thread):
     MIME_TYPES = {
@@ -23,7 +24,6 @@ class Worker(Thread):
         404: "404 Not Found",
         405: "405 Method Not Allowed",
     }
-    URL_VIEW = URL_VIEW
 
     def __init__(self, client_socket: socket, address: Tuple[str, int]):
         super().__init__()
@@ -38,40 +38,28 @@ class Worker(Thread):
         """
         Handle client.
         """
-        request_bytes = self.client_socket.recv(4096)
-        with open("data/server_recv.txt", "wb") as f:
-            f.write(request_bytes)
+        try:
+            request_bytes = self.client_socket.recv(4096)
+            with open("data/server_recv.txt", "wb") as f:
+                f.write(request_bytes)
 
-        request = self.parse_request(request_bytes)
-        content_type=""
-        if request.path in self.URL_VIEW:
-            view = self.URL_VIEW[request.path]
+            request = self.parse_request(request_bytes)
+            
+            view = URLResolver().resolve(request)
+
             response = view(request)
-        else:
-            try:
-                response_body = self.get_static_file(request.path)
-                content_type = None
-                response = HTTPResponse(body=response_body, content_type=content_type, status_code=200)
-            except OSError:
-                response_body = b"<html><body><h1>404 Not Found</h1></body></html>"
-                content_type="text/html; charset=UTF-8"
-                response = HTTPResponse(body=response_body, content_type=content_type, status_code=404)
-        response_header = self.gen_response_header(response, request)
-        response_line = f"HTTP/1.1 {self.STATUS_LINES[response.status_code]}"
-        response = (response_line + response_header + "\r\n").encode() + response.body
-        self.client_socket.send(response)
 
-    def get_static_file(self, path:str) -> bytes:
-        """
-        Get static file.
-        """
-        default_static_root =  os.path.join(os.path.dirname(__file__), "../../static")
-        static_root = getattr(settings, "STATIC_ROOT", default_static_root)
-
-        relative_path = path.lstrip("/")
-        static_file_path = os.path.join(static_root, relative_path)
-        with open(static_file_path, "rb") as f:
-            return f.read()
+            response_header = self.gen_response_header(response, request)
+            response_line = f"HTTP/1.1 {self.STATUS_LINES[response.status_code]}"
+            response = (response_line + response_header + "\r\n").encode() + response.body
+            self.client_socket.send(response)
+        except Exception:
+            print("Error")
+            traceback.print_exc()
+        
+        finally:
+            self.client_socket.close()
+            print("Client is closed")
 
     def parse_request(self, request:bytes) -> HTTPRequest:
         """
@@ -104,7 +92,7 @@ class Worker(Thread):
             response.content_type = self.MIME_TYPES.get(ext, "application/octet-stream")
 
         response_header = f"Date:{datetime.utcnow().strftime('%a, %d %b %Y %H:%M:%S GMT')}\r\n"
-        response_header += "Host: Seigo2016 Web Server/0.7\r\n"
+        response_header += "Host: Seigo2016 Web Server/0.8\r\n"
         response_header += f"Content-Length: {len(response.body)}\r\n"
         response_header += "Connection: Close\r\n"
         response_header += f"Content-Type: {response.content_type}; charset=utf-8\r\n"

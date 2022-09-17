@@ -67,3 +67,18 @@ def parameters(
         status_code = 200
     return HTTPResponse(body=body, content_type=content_type, status_code=status_code)
 
+
+def user_profile(request: HTTPRequest) -> HTTPResponse:
+    """Generate a simple HTML page with the user profile."""
+    user_id = request.params["user_id"]
+    body = textwrap.dedent(f"""\
+        <html>
+        <body>
+            <h1>User Profile</h1>
+            <p>User ID: {user_id}</p>
+        </body>
+        </html>
+    """)
+    body = body.encode()
+    content_type = "text/html; charset=utf-8"
+    return HTTPResponse(body=body, content_type=content_type, status_code=200)
