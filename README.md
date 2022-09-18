@@ -1,3 +1,1 @@
-```
-docker run -dit --name my-apache-app -p 80:80 -v "$PWD":/usr/local/apache2/htdocs/ httpd:2.4
-```
+Based on (伸び悩んでいる3年目Webエンジニアのための、Python Webアプリケーション自作入門)[https://zenn.dev/bigen1925/books/introduction-to-web-application-with-python]
